@@ -13,7 +13,7 @@ This [Aha! Develop](https://www.aha.io/develop/overview) extension allows you to
 
 **Note: In order to install an extension into your Aha! Develop account, you must be an account administrator.**
 
-Install the Azure devops Importer extension by clicking [here](https://secure.aha.io/settings/account/extensions/install?url=).
+Install the Azure devops Importer extension by clicking [here](https://secure.aha.io/settings/account/extensions/install?url=https%3A%2F%2Fsecure.aha.io%2Fextensions%2Faha-develop.azure-devops-importer.gz).
 
 ## Working on the extension
 
