@@ -16,6 +16,16 @@ function getHeader() {
     }
 }
 
+function assertAuthenticated(response) {
+  if (!response.ok && response.status === 401) {
+    throw new aha.AuthError(response.statusText, "ado");
+  }
+
+  if (response.redirected && response.url.includes('signin')) {
+    throw new aha.AuthError(response.statusText, "ado");
+  }
+}
+
 
 async function sendGetHttpRequest(endpoint, forWhat) {
     const response = await fetch(
@@ -26,9 +36,7 @@ async function sendGetHttpRequest(endpoint, forWhat) {
         }
     );
 
-    if (!response.ok && response.status === 401) {
-        throw new aha.AuthError(response.statusText, "ado");
-    }
+    assertAuthenticated(response)
 
     const json = await response.json();
 
@@ -72,9 +80,7 @@ export async function getWorkItems(organization) {
       }
     );
   
-    if (!response.ok && response.status === 401) {
-      throw new aha.AuthError(response.statusText, "ado");
-    }
+    assertAuthenticated(response)
   
     let json = await response.json();
     if(json.workItems.length === 0) {
