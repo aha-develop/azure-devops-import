@@ -8,12 +8,6 @@ class azureDevopsClient {
 
 export default azureDevopsClient;
 
-class AuthError extends Error {
-    constructor(message) {
-      super(message);
-    }
-}
-
 function getHeader() {
     return {
         'Authorization': "Bearer " + azureDevopsClient._token,
@@ -33,7 +27,7 @@ async function sendGetHttpRequest(endpoint, forWhat) {
     );
 
     if (!response.ok && response.status === 401) {
-        throw new AuthError(response.statusText);
+        throw new aha.AuthError(response.statusText, "ado");
     }
 
     const json = await response.json();
@@ -79,7 +73,7 @@ export async function getWorkItems(organization) {
     );
   
     if (!response.ok && response.status === 401) {
-      return false;
+      throw new aha.AuthError(response.statusText, "ado");
     }
   
     let json = await response.json();

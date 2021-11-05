@@ -24,7 +24,7 @@
     "contributes": {
       "importers": {
         "azure-devops": {
-          "title": "Azure Devops",
+          "title": "Azure DevOps",
           "entryPoint": "src/importers/azureDevopsImporter.js"
         }
       }
