@@ -8,18 +8,22 @@ class azureDevopsClient {
 
 export default azureDevopsClient;
 
-class AuthError extends Error {
-    constructor(message) {
-      super(message);
-    }
-}
-
 function getHeader() {
     return {
         'Authorization': "Bearer " + azureDevopsClient._token,
         'Accept': 'application/json',
         'Content-Type': 'application/json'
     }
+}
+
+function assertAuthenticated(response) {
+  if (!response.ok && response.status === 401) {
+    throw new aha.AuthError(response.statusText, "ado");
+  }
+
+  if (response.redirected && response.url.includes('signin')) {
+    throw new aha.AuthError(response.statusText, "ado");
+  }
 }
 
 
@@ -32,9 +36,7 @@ async function sendGetHttpRequest(endpoint, forWhat) {
         }
     );
 
-    if (!response.ok && response.status === 401) {
-        throw new AuthError(response.statusText);
-    }
+    assertAuthenticated(response)
 
     const json = await response.json();
 
@@ -78,9 +80,7 @@ export async function getWorkItems(organization) {
       }
     );
   
-    if (!response.ok && response.status === 401) {
-      return false;
-    }
+    assertAuthenticated(response)
   
     let json = await response.json();
     if(json.workItems.length === 0) {
