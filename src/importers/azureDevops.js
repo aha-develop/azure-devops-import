@@ -1,4 +1,4 @@
-class azureDevopsClient {   
+class azureDevopsClient {
     static _token ;
 
     static setToken = (token) => {
@@ -54,7 +54,7 @@ async function sendGetHttpRequest(endpoint, forWhat) {
     return json.value;
 }
 
-export async function getOrganizationInfo(){       
+export async function getOrganizationInfo(){
     let endPoint = 'https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=6.0';
     let forWhat = 'userId';
     const userId = await sendGetHttpRequest(endPoint, forWhat);
@@ -66,11 +66,11 @@ export async function getOrganizationInfo(){
     return result;
 }
 
-export async function getWorkItems(organization) {  
+export async function getWorkItems(organization, offset) {
     const body = {
       "query": "Select  [System.Id], [System.Title], [System.State] From WorkItems"
     };
-  
+
     let response = await fetch(
       `https://dev.azure.com/${organization}/_apis/wit/wiql?api-version=5.1`,
       {
@@ -79,17 +79,18 @@ export async function getWorkItems(organization) {
         body:  JSON.stringify(body)
       }
     );
-  
+
     assertAuthenticated(response)
-  
+
     let json = await response.json();
-    if(json.workItems.length === 0) {
-      return "nothing";
+    const workItems = json.workItems.slice(offset, offset + 50);
+
+    if(workItems.length === 0) {
+      return { workItemList: "nothing", nextPageOffset: null };
     }
-  
-    const workitemsIdStr = json.workItems.map(workitem => workitem.id).join(",");  
+    const workitemsIdStr = workItems.map(workitem => workitem.id).join(",")
     const endPoint = `https://dev.azure.com/${organization}/_apis/wit/workitems?ids=${workitemsIdStr}&$expand=all&api-version=6.0`;
-    const result = await sendGetHttpRequest(endPoint, '');    
-    return result;
+    const result = await sendGetHttpRequest(endPoint, '');
+    return { workItemList: result, nextPageOffset: offset + workItems.length };
   }
 
