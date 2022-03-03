@@ -83,7 +83,7 @@ export async function getWorkItems(organization, offset) {
     assertAuthenticated(response)
 
     let json = await response.json();
-    const workItems = json.workItems.slice(offset, offset + 200);
+    const workItems = json.workItems.slice(offset, offset + 50);
 
     if(workItems.length === 0) {
       return { workItemList: "nothing", nextPageOffset: null };
