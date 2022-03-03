@@ -10,7 +10,8 @@
   "license": "MIT",
   "devDependencies": {
     "@types/react": "^16.8.0",
-    "axios": "^0.21.1"
+    "axios": "^0.21.1",
+    "prettier": "^2.5.1"
   },
   "dependencies": {
     "@aha-app/aha-develop-react": "^1.0.4",
