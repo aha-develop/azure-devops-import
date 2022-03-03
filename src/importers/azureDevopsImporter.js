@@ -32,14 +32,13 @@ importer.on({ action: "filterValues" }, async ({ filterName, filters }, {identif
 
 importer.on({ action: "listCandidates" }, async ({ filters, nextPage }, {identifier, settings}) => {
   await authenticate();
-  const workItemList = await getWorkItems(filters.organization);
+  const { workItemList, nextPageOffset } = await getWorkItems(filters.organization, nextPage || 0);
   console.log(workItemList);
 
   if(workItemList == 'nothing') {
-    alert('There is no task to show.');
-    return { 
-      records: [] , 
-      nextPage: nextPage 
+    return {
+      records: [],
+      nextPage: nextPageOffset
     };
   }
 
@@ -51,19 +50,19 @@ importer.on({ action: "listCandidates" }, async ({ filters, nextPage }, {identif
         url: workItem._links.html.href,
         description: workItem.fields['System.Description']
       }));
-    
-      return { 
-        records: records , 
-        nextPage: nextPage 
+
+      return {
+        records: records ,
+        nextPage: nextPageOffset
       };
   }else{
     alert('The organization that you enter doesn\'t exist.');
-    return { 
-      records: [] , 
-      nextPage: nextPage 
+    return {
+      records: [] ,
+      nextPage: null
     };
   }
-  
+
 });
 
 importer.on({ action: "renderRecord" }, ({ record, onUnmounted }, { identifier, settings }) => {
@@ -76,7 +75,7 @@ importer.on({ action: "renderRecord" }, ({ record, onUnmounted }, { identifier, 
       <h6>{record.state}</h6>
       <a href={`${record.url}`}>{record.name}</a>
     </div>
-  );  
+  );
 });
 
 importer.on({ action: "importRecord" }, async ({ importRecord, ahaRecord }, {identifier, settings}) => {
