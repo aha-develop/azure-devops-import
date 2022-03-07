@@ -45,6 +45,12 @@ async function sendGetHttpRequest(endpoint, forWhat) {
         value: organization.accountName,
       }));
       return organizationInfo;
+    case "projectInfo":
+      const projectInfo = json.value.map((project) => ({
+        text: project.name,
+        value: project.name,
+      }));
+      return projectInfo;
   }
 
   return json.value;
@@ -63,9 +69,27 @@ export async function getOrganizationInfo() {
   return result;
 }
 
-export async function getWorkItems(organization, offset) {
+export async function getProjectInfo(organization) {
+  if (!organization) {
+    return []
+  }
+
+  let endPoint = `https://dev.azure.com/${organization}/_apis/projects?api-version=6.0`;
+  let forWhat = "projectInfo";
+  const result = await sendGetHttpRequest(endPoint, forWhat);
+
+  return result;
+}
+
+export async function getWorkItems(organization, project, offset) {
   const body = {
-    query: "Select  [System.Id], [System.Title], [System.State] From WorkItems",
+    query: `
+      Select  [System.Id], [System.Title], [System.State]
+      From WorkItems
+      Where [State] <> 'Done'
+      And [System.TeamProject] = '${project}'
+      Order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc
+    `.replace(/\\n/, ' '),
   };
 
   let response = await fetch(
