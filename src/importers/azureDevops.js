@@ -72,7 +72,7 @@ export async function getWorkItems(organization, project, offset) {
     query: `
       Select  [System.Id], [System.Title], [System.State]
       From WorkItems
-      Where [State] <> 'Done'
+      Where [State] NOT IN GROUP 'Done'
       And [System.TeamProject] = '${project}'
       Order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc
     `.replace(/\\n/, ' '),
