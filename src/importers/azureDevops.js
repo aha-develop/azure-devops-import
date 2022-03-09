@@ -26,7 +26,7 @@ function assertAuthenticated(response) {
   }
 }
 
-async function sendGetHttpRequest(endpoint, forWhat) {
+async function getJSON(endpoint) {
   const response = await fetch(endpoint, {
     method: "GET",
     headers: getHeader(),
@@ -34,41 +34,51 @@ async function sendGetHttpRequest(endpoint, forWhat) {
 
   assertAuthenticated(response);
 
-  const json = await response.json();
+  return await response.json()
+}
 
-  switch (forWhat) {
-    case "userId":
-      return json.id;
-    case "organizationInfo":
-      const organizationInfo = json.value.map((organization) => ({
-        text: organization.accountName,
-        value: organization.accountName,
-      }));
-      return organizationInfo;
-  }
-
-  return json.value;
+export async function getUserID() {
+  const response = await getJSON("https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=6.0");
+  return response.id;
 }
 
 export async function getOrganizationInfo() {
-  let endPoint =
-    "https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=6.0";
-  let forWhat = "userId";
-  const userId = await sendGetHttpRequest(endPoint, forWhat);
+  const userId = await getUserID();
+  const response = await getJSON(`https://app.vssps.visualstudio.com/_apis/accounts?memberId=${userId}&api-version=5.1`);
 
-  endPoint = `https://app.vssps.visualstudio.com/_apis/accounts?memberId=${userId}&api-version=5.1`;
-  forWhat = "organizationInfo";
-  const result = await sendGetHttpRequest(endPoint, forWhat);
-
-  return result;
+  const organizationInfo = response.value.map((organization) => ({
+    text: organization.accountName,
+    value: organization.accountName,
+  }));
+  return organizationInfo;
 }
 
-export async function getWorkItems(organization, offset) {
+export async function getProjectInfo(organization) {
+  if (!organization) {
+    return [];
+  }
+
+  const response = await getJSON(`https://dev.azure.com/${organization}/_apis/projects?api-version=6.0`);
+
+  const projectInfo = response.value.map((project) => ({
+    text: project.name,
+    value: project.name,
+  }));
+  return projectInfo;
+}
+
+export async function getWorkItems(organization, project, offset) {
   const body = {
-    query: "Select  [System.Id], [System.Title], [System.State] From WorkItems",
+    query: `
+      Select  [System.Id], [System.Title], [System.State]
+      From WorkItems
+      Where [State] NOT IN GROUP 'Done'
+      And [System.TeamProject] = '${project}'
+      Order by [Microsoft.VSTS.Common.Priority] asc, [System.CreatedDate] desc
+    `.replace(/\\n/, ' '),
   };
 
-  let response = await fetch(
+  let queryResponse = await fetch(
     `https://dev.azure.com/${organization}/_apis/wit/wiql?api-version=5.1`,
     {
       method: "POST",
@@ -77,16 +87,15 @@ export async function getWorkItems(organization, offset) {
     }
   );
 
-  assertAuthenticated(response);
+  assertAuthenticated(queryResponse);
 
-  let json = await response.json();
+  let json = await queryResponse.json();
   const workItems = json.workItems.slice(offset, offset + 50);
 
   if (workItems.length === 0) {
     return { workItemList: "nothing", nextPageOffset: null };
   }
   const workitemsIdStr = workItems.map((workitem) => workitem.id).join(",");
-  const endPoint = `https://dev.azure.com/${organization}/_apis/wit/workitems?ids=${workitemsIdStr}&$expand=all&api-version=6.0`;
-  const result = await sendGetHttpRequest(endPoint, "");
-  return { workItemList: result, nextPageOffset: offset + workItems.length };
+  const workItemsResponse = await getJSON(`https://dev.azure.com/${organization}/_apis/wit/workitems?ids=${workitemsIdStr}&$expand=all&api-version=6.0`);
+  return { workItemList: workItemsResponse.value, nextPageOffset: offset + workItems.length };
 }

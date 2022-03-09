@@ -2,6 +2,7 @@ import React from "react";
 import azureDevopsClient, {
   getOrganizationInfo,
   getWorkItems,
+  getProjectInfo,
 } from "./azureDevops";
 
 const importer = aha.getImporter(
@@ -14,26 +15,35 @@ async function authenticate() {
 }
 
 importer.on({ action: "listFilters" }, async ({}, { identifier, settings }) => {
-  await authenticate();
-  await getOrganizationInfo();
   return {
     organization: {
       title: "Organization",
       required: true,
-      type: "select",
+      type: "autocomplete",
     },
+    project: {
+      title: "Project",
+      required: true,
+      type: "autocomplete"
+    }
   };
 });
 
 importer.on(
   { action: "filterValues" },
   async ({ filterName, filters }, { identifier, settings }) => {
-    let values = [];
+    await authenticate();
+
+    const { organization } = filters
+
     switch (filterName) {
       case "organization":
-        values = await getOrganizationInfo();
+        return await getOrganizationInfo();
+      case "project":
+        return await getProjectInfo(organization);
     }
-    return values;
+
+    return []
   }
 );
 
@@ -43,9 +53,9 @@ importer.on(
     await authenticate();
     const { workItemList, nextPageOffset } = await getWorkItems(
       filters.organization,
+      filters.project,
       nextPage || 0
     );
-    console.log(workItemList);
 
     if (workItemList == "nothing") {
       return {
@@ -58,9 +68,11 @@ importer.on(
       const records = workItemList.map((workItem) => ({
         uniqueId: workItem.id,
         name: workItem.fields["System.Title"],
+        type: workItem.fields["System.WorkItemType"],
         state: workItem.fields["System.State"],
         url: workItem._links.html.href,
         description: workItem.fields["System.Description"],
+        tags: (workItem.fields["System.Tags"] || "").split("; ")
       }));
 
       return {
@@ -80,14 +92,54 @@ importer.on(
 importer.on(
   { action: "renderRecord" },
   ({ record, onUnmounted }, { identifier, settings }) => {
-    onUnmounted(() => {
-      console.log("Un-mounting component for", record.identifier);
-    });
 
     return (
-      <div>
-        <h6>{record.state}</h6>
-        <a href={`${record.url}`}>{record.name}</a>
+      <div style={{ display: "flex", flexDirection: "row", gap: "4px" }}>
+        <div style={{ flexGrow: 1 }}>
+          <div className="card__row">
+            <div className="card__section">
+              <div className="card__field">
+                <span className="text-muted">
+                  {record.type.toUpperCase()} {record.uniqueId}
+                </span>
+              </div>
+            </div>
+            <div className="card__section">
+              <div className="card__field">
+                <a href={aha.sanitizeUrl(record.url)} target="_blank" rel="noopener noreferrer">
+                  <i className="text-muted fa-solid fa-external-link"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="card__row">
+            <div className="card__section">
+              <div className="card__field">
+                <a href={aha.sanitizeUrl(record.url)} target="_blank" rel="noopener noreferrer">
+                  {record.name}
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="card__row">
+            <div className="card__section">
+              <div className="card__field">
+                <aha-pill color="var(--theme-button-pill)">
+                  { record.state }
+                </aha-pill>
+              </div>
+            </div>
+            <div className="card__section">
+              <div className="card__field">
+                <div className="card__tags" data-multiple="true" data-readonly="true">
+                  { record.tags.map(tag => (
+                    tag && <li style={{ backgroundColor: "var(--aha-purple-300)" }}>{tag}</li>
+                  )) }
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -96,8 +148,9 @@ importer.on(
 importer.on(
   { action: "importRecord" },
   async ({ importRecord, ahaRecord }, { identifier, settings }) => {
-    await authenticate();
-    ahaRecord.description = `${importRecord.description}<p><a href='${importRecord.url}'>View on Azure Devops</a></p>`;
+    ahaRecord.description = `${importRecord.description}<p><a href='${importRecord.url}'>View in Azure DevOps</a></p>`;
+    ahaRecord.tagList = importRecord.tags.join(",");
+
     await ahaRecord.save();
   }
 );
